@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Chat Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f6f8;
+            overflow: hidden;
+        }
+        .main-wrapper {
+            display: flex;
+            height: 100vh;
+        }
+        #chat-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #e0e0e0;
+        }
+        #preview-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #chat-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background-color: #fff;
+        }
+        #chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+        .message {
+            display: flex;
+            margin-bottom: 1.5rem;
+            max-width: 95%;
+        }
+        .message-content {
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.25rem;
+            line-height: 1.5;
+            position: relative;
+        }
+        .user-message {
+            justify-content: flex-end;
+        }
+        .user-message .message-content {
+            background-color: #007bff;
+            color: white;
+            border-bottom-right-radius: 0;
+        }
+        .ai-message {
+            justify-content: flex-start;
+        }
+        .ai-message .message-content {
+            background-color: #e9ecef;
+            color: #343a40;
+            border-bottom-left-radius: 0;
+        }
+        #input-area {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        #prompt-input {
+            border-radius: 1.5rem;
+            padding: 0.75rem 1.25rem;
+        }
+        #prompt-input:focus {
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+            border-color: #80bdff;
+        }
+        pre {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 2.5rem 1rem 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            position: relative;
+        }
+        code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+        }
+        .btn-container {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+        }
+        .copy-btn, .preview-btn {
+            background-color: #444c56;
+            color: #fff;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 0.25rem;
+        }
+        .copy-btn:hover, .preview-btn:hover {
+            background-color: #586069;
+        }
+        .typing-indicator {
+            display: none;
+            justify-content: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #adb5bd;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: .2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: .4s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        #preview-header {
+            padding: 0.75rem 1.25rem;
+            background-color: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 500;
+        }
+        #preview-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <div id="chat-col">
+            <div id="chat-wrapper">
+                <div id="chat-container">
+                    <div class="message ai-message">
+                        <div class="message-content" id="initial-message">
+                            Hello! I can help you generate and modify code. How can I assist you today?
+                        </div>
+                    </div>
+                </div>
+                <div id="input-area">
+                    <form id="input-form" class="d-flex">
+                        <input type="text" id="prompt-input" class="form-control me-2" placeholder="Ask me anything..." autocomplete="off">
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div id="preview-col">
+            <div id="preview-header">Preview</div>
+            <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+    </div>
+
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const inputForm = document.getElementById('input-form');
+        const promptInput = document.getElementById('prompt-input');
+        const initialMessage = document.getElementById('initial-message').innerText;
+        const previewFrame = document.getElementById('preview-frame');
+
+        let conversationHistory = [
+            {
+                role: 'user',
+                content: 'You are an expert AI front-end developer. Your task is to create modern and visually appealing user interfaces based on user prompts. When a user asks for a UI component, you will provide a single, complete HTML file with embedded CSS and JavaScript. The design should be responsive and use clean, contemporary aesthetics. You will not provide explanations or separate code blocks; you will only output the code itself.'
+            },
+            { role: 'model', content: initialMessage }
+        ];
+
+        inputForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            appendMessage(prompt, 'user');
+            conversationHistory.push({ role: 'user', content: prompt });
+            
+            promptInput.value = '';
+            promptInput.disabled = true;
+            
+            showTypingIndicator();
+
+            const aiMessageContainer = createMessageContainer('ai');
+            let fullResponse = '';
+            let isFirstChunk = true;
+
+            try {
+                const response = await puter.ai.chat(conversationHistory, {
+                    model: 'gemini-2.0-flash',
+                    stream: true
+                });
+
+                for await (const part of response) {
+                    if (isFirstChunk) {
+                        hideTypingIndicator();
+                        isFirstChunk = false;
+                    }
+                    if (part?.text) {
+                        fullResponse += part.text;
+                        aiMessageContainer.innerHTML = marked.parse(fullResponse);
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
+                }
+                addCodeButtons(aiMessageContainer);
+                conversationHistory.push({ role: 'model', content: fullResponse });
+
+            } catch (error) {
+                console.error('Error:', error);
+                hideTypingIndicator();
+                aiMessageContainer.innerHTML = 'Sorry, something went wrong. Please check the console for details.';
+            } finally {
+                promptInput.disabled = false;
+                promptInput.focus();
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+
+        function createMessageContainer(sender) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message', `${sender}-message`);
+            
+            const messageContent = document.createElement('div');
+            messageContent.classList.add('message-content');
+            
+            messageWrapper.appendChild(messageContent);
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return messageContent;
+        }
+
+        function appendMessage(content, sender) {
+            const messageContent = createMessageContainer(sender);
+            messageContent.textContent = content;
+        }
+
+        function showTypingIndicator() {
+            let indicator = document.getElementById('typing-indicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'typing-indicator';
+                indicator.classList.add('message', 'typing-indicator');
+                indicator.innerHTML = `
+                    <div class="message-content">
+                        <span></span><span></span><span></span>
+                    </div>
+                `;
+                chatContainer.appendChild(indicator);
+            }
+            indicator.style.display = 'flex';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+            }
+        }
+
+        function addCodeButtons(container) {
+            const codeBlocks = container.querySelectorAll('pre');
+            codeBlocks.forEach(block => {
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'btn-container';
+
+                const codeEl = block.querySelector('code');
+                const code = codeEl ? codeEl.innerText : '';
+
+                // Add Copy Button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(code).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = 'Copy';
+                        }, 2000);
+                    });
+                });
+                btnContainer.appendChild(copyBtn);
+
+                // Add Preview button for HTML content
+                const lang = codeEl.className.replace('language-', '');
+                if (lang === 'html' || code.trim().toLowerCase().startsWith('<!doctype')) {
+                    const previewBtn = document.createElement('button');
+                    previewBtn.className = 'preview-btn';
+                    previewBtn.textContent = 'Preview';
+                    previewBtn.addEventListener('click', () => {
+                        previewFrame.srcdoc = code;
+                    });
+                    btnContainer.appendChild(previewBtn);
+                }
+                
+                block.appendChild(btnContainer);
+            });
+        }
+    </script>
+
+</body>
+</html>
