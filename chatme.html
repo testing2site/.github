@@ -302,7 +302,7 @@
 
                 // Add Preview button for HTML content
                 const lang = codeEl.className.replace('language-', '');
-                if (lang === 'html' || code.trim().toLowerCase().startsWith('<!doctype')) {
+                if (lang === 'html' || lang === 'php' || code.trim().toLowerCase().startsWith('<!doctype')) {
                     const previewBtn = document.createElement('button');
                     previewBtn.className = 'preview-btn';
                     previewBtn.textContent = 'Preview';
