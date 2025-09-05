@@ -1,198 +1,161 @@
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>...</title>
-    <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet">
-    <script disable-devtool-auto src='https://cdn.jsdelivr.net/npm/disable-devtool'></script>
-
-
+    <title>iFrame Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #000;
+        .iframe-container {
+            position: relative;
             overflow: hidden;
+            padding-top: 56.25%;
         }
-
-        video {
+        .iframe-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            max-width: 100vw;
-            max-height: 100vh;
-            object-fit: contain;
+            border: none;
+        }
+        .url-input {
+            transition: all 0.3s ease;
+        }
+        .url-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
         }
     </style>
 </head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-8" data-aos="fade-down">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">iFrame Tester</h1>
+                <p class="text-gray-600">Test any website in an iFrame to check compatibility and responsiveness</p>
+            </div>
 
-<body>
-    <!-- Video.js Player -->
-    <video id="video-player" class="video-js vjs-fill vjs-big-play-centered vjs-theme-fantasy" controls playsinline
-        muted></video>
-    <!-- <div class="watermark" id="watermark"></div>-->
-    <!-- Video.js Library -->
-    <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8" data-aos="fade-up">
+                <div class="flex items-center">
+                    <i data-feather="link" class="text-blue-500 mr-3"></i>
+                    <input 
+                        type="url" 
+                        id="urlInput" 
+                        placeholder="Enter URL (e.g., https://example.com)" 
+                        class="url-input flex-grow px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    >
+                    <button 
+                        id="loadBtn" 
+                        class="ml-3 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-300 flex items-center"
+                    >
+                        <i data-feather="play" class="mr-2"></i>
+                        Load
+                    </button>
+                </div>
+                <div class="mt-4 flex items-center text-sm text-gray-500">
+                    <i data-feather="info" class="mr-2"></i>
+                    <span>Make sure the website allows embedding (no X-Frame-Options restrictions)</span>
+                </div>
+            </div>
+
+            <div id="iframeContainer" class="iframe-container bg-gray-200 rounded-xl shadow-lg overflow-hidden hidden" data-aos="zoom-in">
+                <iframe id="testFrame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+            </div>
+
+            <div id="errorMessage" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-8 rounded" role="alert">
+                <div class="flex items-center">
+                    <i data-feather="alert-triangle" class="mr-2"></i>
+                    <strong class="font-bold">Error!</strong>
+                    <span class="ml-2" id="errorText"></span>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 mt-8" data-aos="fade-up">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <i data-feather="help-circle" class="text-blue-500 mr-2"></i>
+                    How to use
+                </h2>
+                <ul class="space-y-3 text-gray-600">
+                    <li class="flex items-start">
+                        <i data-feather="check-circle" class="text-green-500 mr-2 mt-1"></i>
+                        <span>Enter the full URL of the website you want to test (including https://)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i data-feather="check-circle" class="text-green-500 mr-2 mt-1"></i>
+                        <span>Click "Load" to display the website in the iFrame</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i data-feather="check-circle" class="text-green-500 mr-2 mt-1"></i>
+                        <span>Some websites may block being displayed in iFrames for security reasons</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const token = 'MTIzNA';
-    
-    // Setup before initializing the player
-    if (window.videojs && window.videojs.Vhs) {
-    videojs.Vhs.xhr.beforeRequest = function(options) {
-    const url = options.uri || options.url;
-    if (url && url.endsWith('.ts')) {
-    const separator = url.includes('?') ? '&' : '?';
-    options.uri = url + separator + 'token=' + encodeURIComponent(token);
-    }
-    return options;
-    };
-    }
-        const servers = [
-    { server: "cr1.crossbladenaruto.site/hls", path: "/stream.m3u8" },
-	{ server: "cr2.cofecifec.site/hls", path: "/stream.m3u8" },
-	{ server: "cr3.crossbladenaruto.site/hls", path: "/stream.m3u8" },
-	{ server: "cr5.cofecifec.site/hls", path: "/stream.m3u8" },
-	{ server: "cr6.crossbladenaruto.site/hls", path: "/stream.m3u8" },
-	{ server: "cr9.cofecifec.site/hls", path: "/stream.m3u8" }
-];
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+            
+            const urlInput = document.getElementById('urlInput');
+            const loadBtn = document.getElementById('loadBtn');
+            const iframeContainer = document.getElementById('iframeContainer');
+            const testFrame = document.getElementById('testFrame');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
 
+            loadBtn.addEventListener('click', function() {
+                const url = urlInput.value.trim();
+                
+                if (!url) {
+                    showError('Please enter a URL');
+                    return;
+                }
 
-const sources = servers.map(server => `https://${server.server}${server.path}?token=${token}`);
+                if (!isValidUrl(url)) {
+                    showError('Please enter a valid URL (e.g., https://example.com)');
+                    return;
+                }
 
-let currentSourceIndex = Math.floor(Math.random() * sources.length);
-let retryAttempts = 0;
-const maxRetries = 2;
-const bufferTimeout = 4000;
-let bufferTimeoutId;
-let player;
+                // Try to load the URL
+                try {
+                    testFrame.src = url;
+                    iframeContainer.classList.remove('hidden');
+                    errorMessage.classList.add('hidden');
+                    
+                    // Add event listener for frame load errors
+                    testFrame.onerror = function() {
+                        showError('Failed to load the website. It may block being displayed in iFrames.');
+                    };
+                } catch (e) {
+                    showError('An error occurred while loading the URL');
+                }
+            });
 
-function initializePlayer() {
-    console.log("Initializing Video.js player...");
+            function showError(message) {
+                errorText.textContent = message;
+                errorMessage.classList.remove('hidden');
+                iframeContainer.classList.add('hidden');
+            }
 
-    player = videojs("video-player", {
-        techOrder: ["html5"],
-        autoplay: true,
-        muted: true,
-        controls: true,
-        playsinline: true,
-        responsive: true,
-        fluid: true,
-        html5: {
-            vhs: {
-                enableLowLatency: true,
-                experimentalBufferBasedABR: true,
-            },
-        },
-    });
+            function isValidUrl(string) {
+                try {
+                    new URL(string);
+                    return true;
+                } catch (_) {
+                    return false;
+                }
+            }
 
-    loadSource(sources[currentSourceIndex]);
-
-
-    player.on("waiting", handleBuffering);
-    player.on("stalled", handleBuffering);
-
-
-    player.on("playing", () => {
-        console.log("Playing started.");
-        clearTimeout(bufferTimeoutId);
-    });
-
-
-    player.on("error", handleError);
-}
-
-function loadSource(source) {
-    console.log(`Loading source: ${source}`);
-    clearTimeout(bufferTimeoutId);
-
-    player.src({ type: "application/x-mpegURL", src: source });
-    player.play();
-
-
-    bufferTimeoutId = setTimeout(() => {
-        console.warn(`Buffering too long on source: ${source}, switching...`);
-        switchToNextSource();
-    }, bufferTimeout);
-}
-
-function handleBuffering() {
-    console.warn("Buffering detected...");
-    clearTimeout(bufferTimeoutId);
-
-
-    bufferTimeoutId = setTimeout(() => {
-        console.warn("Buffering timeout reached, switching source...");
-        switchToNextSource();
-    }, bufferTimeout);
-}
-
-function handleError() {
-    console.warn(`Error detected on source: ${sources[currentSourceIndex]}`);
-    if (retryAttempts < maxRetries) {
-        retryAttempts++;
-        console.log(`Retrying source: ${sources[currentSourceIndex]}
-            (Attempt ${retryAttempts})`);
-        loadSource(sources[currentSourceIndex]);
-    } else {
-        console.log("Max retries reached, switching source...");
-        switchToNextSource();
-    }
-}
-function switchToNextSource() {
-    retryAttempts = 0;
-    currentSourceIndex = (currentSourceIndex + 1) % sources.length;
-    console.log(`Switching to next source: ${sources[currentSourceIndex]}`);
-    loadSource(sources[currentSourceIndex]);
-}
-document.addEventListener("DOMContentLoaded", initializePlayer);
-    </script>
-<script>
-        
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        
-        
-        document.addEventListener('keydown', e => {
-        // F12
-        if (e.key === 'F12') {
-        e.preventDefault();
-        }
-        
-        if (
-        e.ctrlKey &&
-        (e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
-        e.key.toUpperCase() === 'U'
-        ) {
-        e.preventDefault();
-        }
+            // Allow pressing Enter to submit
+            urlInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loadBtn.click();
+                }
+            });
         });
-        
-        
-        document.addEventListener('keydown', e => {
-        if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'S') {
-        e.preventDefault();
-        }
-        });
-        
-        
-        setInterval(() => {
-        let start = performance.now();
-        debugger;
-        let end = performance.now();
-        if (end - start > 100) {
-        
-        alert('Devtools detected!');
-        
-        }
-        }, 1000);
     </script>
-
 </body>
-
 </html>
